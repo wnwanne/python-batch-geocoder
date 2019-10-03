@@ -3,7 +3,7 @@ import sys
 import os
 
 import pandas as pd
-from batch_geocoder import GeopyWrapper
+from batch_geocoder import PgeocodeWrapper
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -11,24 +11,38 @@ root_dir = os.path.dirname(os.path.abspath(__name__))
 storage_dir = os.path.join(root_dir, 'instance')
 
 def get_df():
-    return pd.DataFrame({'zipcode': ['16150', '16151', '16153', '16154',
+    return pd.DataFrame({'zipcode': ['L4E 0S4', '16151', '16153', '16154',
         '16155', '16156', '16157', '16159']})
 
-def test_batch():
+def split_canada_and_us(df):
+    """assumes anythin numeric is US, else is canada. returns canada, us"""
+    is_canada = ~df.zipcode.str.isdigit()
+    is_us = df.zipcode.str.isdigit()
+    return df[is_canada].copy(), df[is_us].copy()
+
+def test_batches():
     df = get_df()
+    cad_df, us_df = split_canada_and_us(df)
 
-    helper = GeopyWrapper(partition_size=2, storage_dir=storage_dir)
-    helper.df = df.copy()
-    assert not helper.df.empty
+    cad_helper = PgeocodeWrapper(partition_size=2, storage_dir=storage_dir,
+        country='ca')
+    us_helper = PgeocodeWrapper(partition_size=2, storage_dir=storage_dir,
+        country='us')
 
-    helper.run()
-    assert all([col in helper.df.columns for col in ['latitude', 'longitude']])
+    cad_helper.df = cad_df.copy()
+    us_helper.df = us_df.copy()
 
-    assert len(df) == len(helper.df)
-    logging.info('found: %s' % helper.df.latitude.isna().sum() / len(df))
+    cad_helper.run()
+    us_helper.run()
+
+    result = pd.concat([us_helper.df.dropna(), cad_helper.df.dropna()])
+    assert all([col in result.columns for col in ['latitude', 'longitude']])
+
+    assert len(df) == len(result)
+    logging.info('found: %s' % (~result.latitude.isna()).sum())
 
 
 if __name__ == '__main__':
     logging.info('initializing tests.')
-    test_batch()
+    test_batches()
     logging.info('completed tests.')
