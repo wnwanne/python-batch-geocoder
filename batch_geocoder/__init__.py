@@ -8,7 +8,7 @@ import traceback
 import os
 import sys
 
-
+__version__ = 'v0.1'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
