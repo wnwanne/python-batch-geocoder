@@ -17,6 +17,7 @@ class PgeocodeWrapper:
         """requires separate inputs for each country"""
         self.partition_size = partition_size
         self.storage_dir = storage_dir
+        logging.info('Storage at %s.' % (storage_dir))
         self.df = pd.DataFrame()
         if country in list(pgeocode_country_codes):
             self.country_code = pgeocode_country_codes[country]
@@ -42,7 +43,6 @@ class PgeocodeWrapper:
         partition['longitude'] = longitudes.tolist()
         filename = '%s_part_%s.csv' % (self.country_code, partition_number)
         filepath = os.path.join(self.storage_dir, filename)
-        logging.info('Saving %s to %s' % (partition.shape, filepath))
         partition.to_csv(filepath, index=False)
         self.start_i += self.partition_size
         return list(latitudes), list(longitudes)
